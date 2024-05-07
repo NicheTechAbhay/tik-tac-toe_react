@@ -8,7 +8,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="container">
       <input type="text" value={inputText} onChange={handleInputChange} />
       <p>You typed: {inputText}</p>
     </div>
