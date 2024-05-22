@@ -1,4 +1,4 @@
-import { Login } from '../../backend/auth'
+import { Login } from '../../backend/auth';
 import React, { useState, useEffect } from "react";
 import * as Yup from "yup";
 import { useNavigate} from 'react-router-dom';
@@ -98,7 +98,7 @@ const Login1: React.FC = () => {
       } else {
         localStorage.removeItem('rememberMe');
       }
-      const result = await Login(email, password);
+      const result:any = await Login(email, password);
       if (result.errorCode === 0) {
         setLoading(false);
         console.log('Data signed in successfully:', result.data);

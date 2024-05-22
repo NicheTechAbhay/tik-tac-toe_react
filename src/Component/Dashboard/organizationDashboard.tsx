@@ -1,13 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect, Key } from "react";
+import React, { useState, useEffect, Key , useRef} from "react";
 import * as Yup from "yup";
 import { getUserRole } from '../../backend/org_details'
 import Loader from "../../utils/Loader/Loader";
 import swal from "sweetalert";
 import { emailSchema, roleSchema, nameSchema } from '../../helper/ValidationHelper'
-import {orgDashboardCounts,orgUserList,orgEntitlementList} from '../../backend/dashboard'
+import { orgDashboardCounts, orgUserList, orgEntitlementList } from '../../backend/dashboard'
 import Sidebar from "../Sidebar/Sidebar";
+import {addUserToOrganization } from '../../backend/org_user'
+
 // Validation Schemas
 interface OrgUser {
   id: Key | null | undefined;
@@ -39,15 +41,16 @@ const validationSchema = Yup.object().shape({
   lastName: nameSchema,
   role: roleSchema,
 });
-const organizationDashboard: React.FC = () => {
-  const org_id = localStorage.getItem("org_id");
+const OrganizationDashboard: React.FC = () => {
+  const org_id:any = localStorage.getItem("org_id");
   const orgName = localStorage.getItem("org_name");
+  const closeModalButtonRef = useRef<HTMLButtonElement>(null);
 
- 
+
   const [orgData, setOrgData] = useState<{ entitlementCount: number, errorCode: number, sitesDetailCount: number, userCount: number } | null>(null);
   const [orgUserData, setOrgUserData] = useState<OrgUser[]>([]);
   const [entitlementListData, setEntitlementListData] = useState<Entitlement[] | null>(null);
-  
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -55,9 +58,9 @@ const organizationDashboard: React.FC = () => {
         const data = await orgDashboardCounts(org_id);
         setLoading(false)
         if (data) {
-             setOrgData(data);
-        //  console.log('orgDashboardCounts',data);
-        
+          setOrgData(data);
+          //  console.log('orgDashboardCounts',data);
+
         } else {
           console.log("No organization details found.");
         }
@@ -72,12 +75,12 @@ const organizationDashboard: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const data = await orgUserList(org_id);
+        const data :any = await orgUserList(org_id);
         setLoading(false)
         if (data) {
           setOrgUserData(data.userList);
-        console.log('orgUserList',data);
-        
+          console.log('orgUserList', data);
+
         } else {
           console.log("No organization details found.");
         }
@@ -96,8 +99,8 @@ const organizationDashboard: React.FC = () => {
         setLoading(false)
         if (data && data.entitlementList) {
           setEntitlementListData(data.entitlementList);
-        console.log('orgEntitlementList',data);
-        
+          console.log('orgEntitlementList', data);
+
         } else {
           console.log("No organization details found.");
         }
@@ -108,6 +111,10 @@ const organizationDashboard: React.FC = () => {
 
     fetchData();
   }, []);
+  const [changeFlage, setChangeFlage] = useState<boolean>(false);
+
+  console.log("vvvv" , changeFlage);
+  
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -115,15 +122,20 @@ const organizationDashboard: React.FC = () => {
   const [lastName, setLastName] = useState("");
   const [lastNameError, setLastNameError] = useState("");
   const [role, setRole] = useState("");
+  
   const [roleError, setRoleError] = useState("");
   const [loading, setLoading] = useState<boolean>(false);
   const [roles, setRoles] = useState<roles[] | null>(null);
   useEffect(() => {
     const fetchRoles = async () => {
       try {
+        setLoading(true)
+
         const result1 = await getUserRole(); // Replace with your actual API call
         console.log("getUserRole", result1.data);
         if (result1 && result1.data) {
+        setLoading(false)
+
           setRoles(result1.data);
         }
       } catch (error: any) {
@@ -169,14 +181,36 @@ const organizationDashboard: React.FC = () => {
       .then(() => setRoleError(''))
       .catch((err: Yup.ValidationError) => setRoleError(err.message));
   };
-const handleEdit = (id : number) => {
+  const handleEdit = ( user :any) => {
+    setChangeFlage(false);
 
-}
- 
+    setEmail(user.email);
+    setFirstName(user.firstname);
+    setLastName(user.lastname);
+    setRole(user.id);
+  } 
+  const handleFiledClear = () => {
+  
+    setEmailError("");
+    setFirstNameError("");
+    setLastNameError("");
+    setRoleError("");
+  } 
+
+  const handleAddUser = () => {
+
+    setEmail("");
+    setFirstName("");
+    setLastName("");
+    setRole("");
+    setChangeFlage(true)
+  }
+
+
   const handleDelete = (id: number) => {
     swal({
-      title: "Confirm Delete",
-      text: "Are you sure you want to delete?",
+      title: "Confirm Remove",
+      text: "Are you sure you want to remove?",
       icon: "warning",
       buttons: ["Cancel", "Delete"],
       dangerMode: true,
@@ -206,7 +240,7 @@ const handleEdit = (id : number) => {
         const firstNameErrorMsg = err.inner.find(error => error.path === 'firstName')?.message || "";
         const lastNameErrorMsg = err.inner.find(error => error.path === 'lastName')?.message || "";
         const roleErrorMsg = err.inner.find(error => error.path === 'role')?.message || "";
-       
+
         setEmailError(emailErrorMsg);
         setFirstNameError(firstNameErrorMsg);
         setLastNameError(lastNameErrorMsg);
@@ -220,10 +254,42 @@ const handleEdit = (id : number) => {
     const isValid = await validateForm();
     if (isValid) {
       setLoading(true);
-      console.log(email,firstName , lastName , role  )
+      console.log(email, firstName, lastName, role)
       console.log('isValid', isValid)
       setLoading(false);
-    }else{
+
+      const userData = {
+          "email": email,
+          "firstname": firstName,
+          "lastname": lastName,
+     
+      };
+
+    
+
+    
+      try {
+        setLoading(true)
+       
+        const result = await  addUserToOrganization(userData ) ; 
+        console.log(result && result);
+        
+        if(result.data != null)
+          {
+
+            setLoading(false)
+            if (closeModalButtonRef.current) {
+              closeModalButtonRef.current.click();
+            }
+
+          
+          }
+      }
+       catch (error) {
+        console.error("API call failed:", error);
+      }
+   
+    } else {
       console.log('isValid', isValid)
     }
   };
@@ -1220,9 +1286,9 @@ const handleEdit = (id : number) => {
         </div>
         <div className="page">
           <>
-          <Sidebar/>
+            <Sidebar />
           </>
-      
+
           <div className="main-content app-content">
             <div className="container-fluid">
               <div className="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
@@ -1349,6 +1415,10 @@ const handleEdit = (id : number) => {
                               data-bs-toggle="modal"
                               data-bs-whatever="@fat"
                               type="button"
+                              onClick={()=> handleAddUser()}
+                              ref={closeModalButtonRef}
+
+                             
                             >
                               {' '}
                               <i className="ri-add-fill me-2 align-middle d-inline-block" />
@@ -1368,13 +1438,14 @@ const handleEdit = (id : number) => {
                                       className="modal-title"
                                       id="exampleModalLabel"
                                     >
-                                      Add User
+                                     {changeFlage === true ? "Add User" : "Edit User"}
                                     </h6>
                                     <button
                                       aria-label="Close"
                                       className="btn-close"
                                       data-bs-dismiss="modal"
                                       type="button"
+                                      onClick={()=> handleFiledClear()}
                                     />
                                   </div>
                                   <div className="modal-body py-2">
@@ -1458,7 +1529,7 @@ const handleEdit = (id : number) => {
                                             >
                                               <option value="">Select a role</option>
                                               {roles && roles.map((role) => (
-                                                <option key={role.id} value={role.name}>{role.name}</option>
+                                                <option key={role.id} value={role.id}>{role.name}</option>
                                               ))}
                                             </select>
                                             {roleError && <div className="text-danger">{roleError}</div>}
@@ -1473,7 +1544,7 @@ const handleEdit = (id : number) => {
                                       type="button"
                                       onClick={handleSubmit}
                                     >
-                                      Add User
+                                      {changeFlage === true ? "Add User" : "Edit User"}
                                     </button>
                                     {' '}
                                   </div>
@@ -1512,72 +1583,71 @@ const handleEdit = (id : number) => {
                                 </tr>
                               </thead>
                               <tbody>
-                              {orgUserData && orgUserData.length >0 ? orgUserData.map((user) => (
-                            <tr key={user.id}>
-                              <td>
-                                <div className="d-flex align-items-center fw-semibold">
-                                {" "}
-                                  <span className="avatar avatar-sm me-2 avatar-rounded">
+                                {orgUserData && orgUserData.length > 0 ? orgUserData.map((user) => (
+                                  <tr key={user.id}>
+                                    <td>
+                                      <div className="d-flex align-items-center fw-semibold">
+                                        {" "}
+                                        <span className="avatar avatar-sm me-2 avatar-rounded">
+                                          {" "}
+                                          <img
+                                            src="./src/assets/images/faces/4.jpg"
+                                            alt="avatar"
+                                          />{" "}
+                                        </span>
+                                        {`${user.firstname} ${user.lastname}`}{' '}
+                                      </div>
+                                    </td>
+                                    <td>{user.email}</td>
+                                    <td>
+                                      {" "}
+                                      <h5>
+                                        <span className="badge bg-info-transparent">
+                                          ORG {user.user_role}
+                                        </span>
+                                      </h5>
+                                    </td>
+                                    <td>
+                                      <div className="hstack gap-2 fs-15">
+                                        {" "}
+                                        <a
+                                          aria-label="anchor"
+                                          data-bs-target="#formmodal"
+                                          data-bs-toggle="modal"
+                                          data-bs-whatever="@fat"
+                                          className="btn btn-icon btn-wave waves-effect waves-light btn-sm btn-primary-light"
+                                        >
+                                          <i className="ri-edit-line" onClick={() => handleEdit(user )} />
+                                        </a>{" "}
+                                        <a
+                                          aria-label="anchor"
+                                          href="javascript:void(0);"
+                                          className="btn btn-icon btn-wave waves-effect waves-light btn-sm btn-danger-light"
+                                          onClick={() =>
+                                            // handleDelete(data.QuestionID)
+                                            handleDelete(1)
+                                          }
+                                        >
+                                          <i className="ri-delete-bin-2-line" />
+                                        </a>{" "}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )) : <tr className="bg-white border-0">
                                   {" "}
-                                    <img
-                                      src="./src/assets/images/faces/4.jpg"
-                                      alt="avatar"
-                                    />{" "}
-                                  </span>
-                                  {`${user.firstname} ${user.lastname}`}{' '}
-                                </div>
-                              </td>
-                              <td>{user.email}</td>
-                              <td>
-                              {" "}
-                                <h5>
-                                  <span className="badge bg-info-transparent">
-                                    ORG {user.user_role}
-                                  </span>
-                                </h5>
-                              </td>
-                              <td>
-                                <div className="hstack gap-2 fs-15">
-                                  {" "}
-                                  <a
-                                    aria-label="anchor"
-                                    href="javascript:void(0);"
-                                    data-bs-target="#formmodal"
-                              data-bs-toggle="modal"
-                              data-bs-whatever="@fat"
-                                    className="btn btn-icon btn-wave waves-effect waves-light btn-sm btn-primary-light"
-                                  >
-                                    <i className="ri-edit-line" onClick={()=> handleEdit(1)} />
-                                  </a>{" "}
-                                  <a
-                                    aria-label="anchor"
-                                    href="javascript:void(0);"
-                                    className="btn btn-icon btn-wave waves-effect waves-light btn-sm btn-danger-light"
-                                    onClick={() =>
-                                      // handleDelete(data.QuestionID)
-                                      handleDelete(1)
-                                    }
-                                  >
-                                    <i className="ri-delete-bin-2-line"  />
-                                  </a>{" "}
-                                </div>
-                              </td>
-                            </tr>
-                          ))  : <tr className="bg-white border-0">
-                          {" "}
-                          <td colSpan={4} className="border-0">
-                            {" "}
-                            <div className="col-md-12 w-100 mt-4">
-                              <p className="text-center">No Data Found</p>{" "}
-                            </div>
-                          </td>
-                        </tr>}
-                                
+                                  <td colSpan={4} className="border-0">
+                                    {" "}
+                                    <div className="col-md-12 w-100 mt-4">
+                                      <p className="text-center">No Data Found</p>{" "}
+                                    </div>
+                                  </td>
+                                </tr>}
+
                               </tbody>
                             </table>
                           </div>
                         </div>
-                    
+
                       </div>
                     </div>
                   </div>
@@ -1666,12 +1736,12 @@ const handleEdit = (id : number) => {
                             </div>
                             <div className="card-body">
                               <ul className="list-group">
-                              {entitlementListData && entitlementListData.map((entitlement) => (
-                              <li key={entitlement.id} className="list-group-item">
-                                  {' '}{entitlement.entitlementName}
-                                <span className="float-end">{entitlement.entitlementValue}</span>
-                              </li>
-                              ))}
+                                {entitlementListData && entitlementListData.map((entitlement) => (
+                                  <li key={entitlement.id} className="list-group-item">
+                                    {' '}{entitlement.entitlementName}
+                                    <span className="float-end">{entitlement.entitlementValue}</span>
+                                  </li>
+                                ))}
                                 {/* <li className="list-group-item">
                                   {' '}Max Production Sites
                                   <span className=" float-end ">
@@ -1996,4 +2066,4 @@ const handleEdit = (id : number) => {
   )
 };
 
-export default organizationDashboard;
+export default OrganizationDashboard;

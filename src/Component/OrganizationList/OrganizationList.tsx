@@ -33,10 +33,7 @@ type Organization = {
   interface SidebarOrgs {
     data: organizationSidebarList[];
   }
-  interface TypesOrg {
-    data: Typeor[];
-  }
-  
+   
 
 const validationSchema = Yup.object().shape({
   organizationName: OrganizationNameSchema,
@@ -61,7 +58,7 @@ const history = useNavigate();
     const [typeDropdownError, setTypeDropdownError] = useState("");
     const [message, setMessage] = useState("");
     const [messageError, setMessageError] = useState("");
-    const closeModalButtonRef = useRef(null);
+    const closeModalButtonRef = useRef<HTMLButtonElement>(null);
 
     const handleorganizationNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>{
       const newOrganizationName = e.target.value.trimStart();
@@ -122,7 +119,12 @@ const history = useNavigate();
           setDomainInput('');
           setDomainError('');
         } catch (error) {
-          setDomainError(error.message);
+          if (error instanceof Error) {
+            setDomainError(error.message);
+        } else {
+            // Handle the case where the error might not be an instance of Error
+            setDomainError('An unknown error occurred');
+        }
         }
       }
   };
@@ -154,14 +156,16 @@ const history = useNavigate();
         return false;
       }
     };
+
     const handleSubmit = async () => {
       const isValid = await validateForm();
       
       if (isValid) {
         
-        const selectedTypeId = typeDropdown.find(type => type.name === selectedType)?.id;
+        const selectedTypeId = typeDropdown?.find(type => type.name === selectedType)?.id ?? null;
+
           
-        const data = {
+        const data:any = {
           "user_id": 1,
           "user_role": 1,
           "name": organizationName,
@@ -170,7 +174,6 @@ const history = useNavigate();
           "status": "Y",
           "domain":domains,
         };
-        console.log(domains)
         try {
           setLoading(true)
           const result = await addOrganization(data); 
@@ -180,7 +183,9 @@ const history = useNavigate();
             {
               setLoading(false)
               console.log("Success" , result)
-              closeModalButtonRef.current.click();
+              if (closeModalButtonRef.current) {
+                closeModalButtonRef.current.click();
+              }
 
               setDomainInput('')
               setOrganizationName('')
@@ -194,7 +199,8 @@ const history = useNavigate();
               fetchData()
               fetchData1()
             }
-        } catch (error) {
+        }
+         catch (error) {
           console.error("API call failed:", error);
         }
       }
@@ -221,8 +227,10 @@ const history = useNavigate();
     };
     //////////////////////////////////////////////
 
-    const [searchTerm, setSearchTerm] = useState<string | null>("");
+    const [searchTerm, setSearchTerm] = useState<any >("");
     const [results, setResults] = useState<Organization[] | null>(null);
+    console.log("results" , results);
+    
     const [orgsWithSites, setOrgsWithSites] = useState<OrganizationWithSiteCount[] | null>(null);
     const [sidebarOrgs, setSidebarOrgs] =useState<SidebarOrgs>({ data: [] });
 
@@ -230,7 +238,7 @@ const history = useNavigate();
       try {
         setLoading(true)
 
-        const result1 = await organizationSidebarList(searchTerm);
+        const result1:any = await organizationSidebarList(searchTerm);
         console.log("organizationSidebarList", result1);
 
 
@@ -251,7 +259,7 @@ const history = useNavigate();
       const fetchData = async () => {
         try {
           setLoading(true)
-          const data = await fetchOrganizationAndSiteDetails();
+          const data:any = await fetchOrganizationAndSiteDetails();
          
           console.log("Data", data);
           if (data) {
